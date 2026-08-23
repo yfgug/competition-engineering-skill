@@ -31,22 +31,47 @@ This skill fixes all three with an on-disk protocol system.
 
 ## Installation
 
-### Option 1: Install as a skill (Tuanjie/Codely CLI)
+The skill is a plain Markdown + one Node.js script bundle with a standard `SKILL.md` entry (YAML frontmatter + instructions). It works with **any agent framework that supports "skills" / "custom instructions" / "project rules"** — Claude Skills (Claude Code / Claude apps), Cursor Rules, AGENTS.md-style agents (Codex etc.), Codely/Tuanjie CLI, or simply pasting `SKILL.md` into any chat AI as a system prompt.
+
+### Option 1: Claude / Claude Code (Claude Skills format)
+
+Copy this folder into a skills directory:
+
+```bash
+# Claude Code (project scope)
+mkdir -p .claude/skills && cp -r competition-engineering .claude/skills/
+# or personal scope
+cp -r competition-engineering ~/.claude/skills/
+```
+
+The `SKILL.md` frontmatter follows the standard skills format (name + description), so Claude picks it up automatically in the next session.
+
+### Option 2: Any AGENTS.md-based agent (Codex, Codely/Tuanjie CLI, ...)
+
+Copy the folder to your agent's skills/rules discovery path, or reference it from your project's `AGENTS.md`:
+
+```text
+Read and follow <path-to>/competition-engineering/SKILL.md for all competition work in this repo.
+```
+
+For Codely/Tuanjie CLI specifically:
 
 ```bash
 codely skills install ./competition-engineering.skill --scope user
+# or manually copy to %USERPROFILE%\.codely-cli\skills\ (Windows) / ~/.codely-cli/skills/ (Linux/macOS)
 ```
 
-Or manually copy the skill folder to the user-level discovery path:
+Then run your agent's reload command (e.g. `/skills reload`, verify with `/skills list`).
 
-```text
-Windows: %USERPROFILE%\.codely-cli\skills\competition-engineering\
-Linux/macOS: ~/.codely-cli/skills/competition-engineering/
-```
+### Option 3: Cursor / other rule-based editors
 
-Then run `/skills reload` in your AI session and verify with `/skills list`.
+Point your project rules at `SKILL.md`, e.g. add a rule in `.cursor/rules/` that references this file.
 
-### Option 2: Scaffold only (no AI agent needed)
+### Option 4: No agent runtime — just paste it
+
+Open `SKILL.md` (plus `references/*.md` as needed) and paste it into any chat AI as the system/first message. The workflows are plain Markdown; any competent LLM can follow them.
+
+### Option 5: Scaffold only (no AI at all)
 
 You don't need the skill runtime — just copy the templates:
 

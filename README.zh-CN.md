@@ -31,22 +31,49 @@
 
 ## 安装
 
-### 方式一：作为 Skill 安装（Tuanjie/Codely CLI）
+本 Skill 是纯 Markdown + 一个 Node.js 脚本的组合，入口是标准 `SKILL.md`（YAML frontmatter + 指令正文）。**任何支持"skills / 自定义指令 / 项目规则"的 Agent 框架都能用**——Claude Skills（Claude Code / Claude 应用）、Cursor Rules、AGENTS.md 类 Agent（Codex 等）、Codely/团杰 CLI，或者干脆把 `SKILL.md` 粘贴进任意聊天 AI 当系统提示词。
+
+### 方式一：Claude / Claude Code（Claude Skills 格式）
+
+把本文件夹复制进 skills 目录：
+
+```bash
+# Claude Code（项目级）
+mkdir -p .claude/skills && cp -r competition-engineering .claude/skills/
+# 或个人级
+cp -r competition-engineering ~/.claude/skills/
+```
+
+`SKILL.md` 的 frontmatter 遵循标准 skills 格式（name + description），Claude 下个会话自动识别。
+
+### 方式二：AGENTS.md 类 Agent（Codex、Codely/团杰 CLI 等）
+
+复制文件夹到你的 Agent 的 skills/规则发现路径，或在项目 `AGENTS.md` 里引用：
+
+```text
+Read and follow <path-to>/competition-engineering/SKILL.md for all competition work in this repo.
+```
+
+Codely/团杰 CLI 专用安装：
 
 ```bash
 codely skills install ./competition-engineering.skill --scope user
+# 或手动复制到 %USERPROFILE%\.codely-cli\skills\（Windows）/ ~/.codely-cli/skills/（Linux/macOS）
 ```
 
-或手动复制 skill 文件夹到用户级发现路径：
+然后执行你的 Agent 的重载命令（如 `/skills reload`，用 `/skills list` 确认）。
 
-```text
-Windows: %USERPROFILE%\.codely-cli\skills\competition-engineering\
-Linux/macOS: ~/.codely-cli/skills/competition-engineering/
-```
+### 方式三：Cursor / 其他规则型编辑器
 
-然后在 AI 会话中执行 `/skills reload`，用 `/skills list` 确认。
+把项目规则指向 `SKILL.md`，例如在 `.cursor/rules/` 里加一条引用本文件的规则。
 
-### 方式二：只用骨架模板（无需 AI 运行时）
+### 方式四：无 Agent 运行时——直接粘贴
+
+打开 `SKILL.md`（需要时带上 `references/*.md`），粘贴进任意聊天 AI 当系统提示词/首条消息。工作流就是纯 Markdown 指令，任何合格的大模型都能执行。
+
+### 方式五：只用骨架模板（完全不需要 AI）
+
+不需要任何运行时，直接用模板：
 
 ```bash
 node scripts/scaffold.cjs /path/to/your/competition
