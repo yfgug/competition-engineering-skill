@@ -6,7 +6,7 @@
 
 A battle-tested AI skill that turns "human + AI" competition engineering from unreliable chat memory into a disciplined, on-disk protocol system — **persistent notes, hard red lines, quantified gates, and unpollutable baselines**.
 
-> Distilled from a real competition: **200+ teams, ranked #6 nationally** (LLM inference optimization), official score 71.9 → 89.11, **zero rule violations** throughout.
+> Distilled from a real competition: **top 6 in the national finals** of an LLM inference optimization contest (23 finalist teams out of 200+), official score 71.9 → 89.11 during the online stage, **zero rule violations** throughout.
 
 ## What problem does this solve?
 
