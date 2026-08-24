@@ -2,122 +2,125 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+A reusable human-AI protocol for multi-round competitions. It keeps decisions anchored to verifiable evidence, persistent experiment notes, metric contracts, explicit route states, and immutable baselines.
 
-A battle-tested AI skill that turns "human + AI" competition engineering from unreliable chat memory into a disciplined, on-disk protocol system — **persistent notes, hard red lines, quantified gates, and unpollutable baselines**.
+> The method was distilled from an LLM inference optimization competition: 23 finalists from 200+ teams, sixth place in the national final, and an online-stage score improvement from 71.9 to 89.11 with no rule violations. The repository generalizes that experience, but each competition type still needs evaluation-specific adaptation.
 
-> Distilled from a real competition: **top 6 in the national finals** of an LLM inference optimization contest (23 finalist teams out of 200+), official score 71.9 → 89.11 during the online stage, **zero rule violations** throughout.
+## Scope
 
-## What problem does this solve?
+Use it for projects that:
 
-When an AI agent is your main executor over a weeks-long competition, three things kill you:
+- Run through multiple experiment rounds over days or weeks.
+- Have a score, leaderboard, performance target, or replication criterion.
+- Need human and AI collaborators to resume across sessions.
+- Carry meaningful submission, compute, compliance, or delivery risk.
 
-1. **Chat memory is unreliable** — sessions get compressed or closed, conclusions vanish.
-2. **Undocumented decisions drift** — verbal agreements get silently violated.
-3. **Wasted compute on repeated failures** — closed routes get retried; evaluator noise gets treated as real gains.
-
-This skill fixes all three with an on-disk protocol system.
+It should not activate automatically for one-off benchmarks, ordinary project scaffolding, or non-competition code changes.
 
 ## Core mechanisms
 
-| Mechanism | What it does |
+| Mechanism | Purpose |
 |---|---|
-| **Persistent notes** | Every substantive event → a numbered note (`YYYYMMDD_NN_topic_status.md`) with fixed header & 7-section body. Notes are the single source of truth. |
-| **Hard red lines** | Official rules translated into executable "do NOT X" items, enforced as AI hard stops. |
-| **Quantified gates** | Every route declares pass/fail numbers *before* experimenting; below gate → closed immediately. |
-| **Unpollutable baseline** | Officially verified best is immutable; experiments branch from clean copies only. |
-| **Two ledgers** | `_closed_routes.md` (never re-burn compute) + `_submissions.md` (detect evaluator variance). |
-| **If-then blockers** | e.g. dirty `git status` → refuse to proceed; score mismatch within variance → forbid code changes. |
+| Evidence hierarchy | Orders official results, raw artifacts, Git state, notes, and chat claims |
+| Single dynamic entry | `00_先看这里.md` holds the metric contract, current recommendation, and next action |
+| Conditional blockers | Stop on conflicting unknown changes, missing authorization, or invalid evidence |
+| Experiment states | Separate pass, fail, inconclusive, and invalid outcomes |
+| Separate ledgers | `_evaluations.md` for local evaluation and `_submissions.md` for official submissions |
+| Immutable baseline | Identifies baselines by commit SHA or content hash |
+| Closed-route registry | Closes only valid failures and records evidence required for retry |
 
 ## Installation
 
-The skill is a plain Markdown + one Node.js script bundle with a standard `SKILL.md` entry (YAML frontmatter + instructions). It works with **any agent framework that supports "skills" / "custom instructions" / "project rules"** — Claude Skills (Claude Code / Claude apps), Cursor Rules, AGENTS.md-style agents (Codex etc.), Codely/Tuanjie CLI, or simply pasting `SKILL.md` into any chat AI as a system prompt.
+### Codex
 
-### Option 1: Claude / Claude Code (Claude Skills format)
+Copy the directory into a personal or project skill discovery path, for example:
 
-Copy this folder into a skills directory:
-
-```bash
-# Claude Code (project scope)
-mkdir -p .claude/skills && cp -r competition-engineering .claude/skills/
-# or personal scope
-cp -r competition-engineering ~/.claude/skills/
+```powershell
+Copy-Item -Recurse .\competition-engineering "$HOME\.codex\skills\competition-engineering"
 ```
 
-The `SKILL.md` frontmatter follows the standard skills format (name + description), so Claude picks it up automatically in the next session.
+The repository includes `agents/openai.yaml` for Codex discovery. Invoke it explicitly with `$competition-engineering` or allow normal automatic selection.
 
-### Option 2: Any AGENTS.md-based agent (Codex, Codely/Tuanjie CLI, ...)
+### Claude Code
 
-Copy the folder to your agent's skills/rules discovery path, or reference it from your project's `AGENTS.md`:
+```bash
+mkdir -p .claude/skills
+cp -r competition-engineering .claude/skills/
+```
+
+### AGENTS.md or rule-based agents
+
+Reference the entrypoint from the project's rules:
 
 ```text
-Read and follow <path-to>/competition-engineering/SKILL.md for all competition work in this repo.
+Read and follow <path-to>/competition-engineering/SKILL.md for multi-round competition engineering work in this repo.
 ```
 
-For Codely/Tuanjie CLI specifically:
+The skill instructions are currently Chinese-first. The host must let the agent read `SKILL.md` and access `references/`, `assets/`, and `scripts/` as needed.
 
-```bash
-codely skills install ./competition-engineering.skill --scope user
-# or manually copy to %USERPROFILE%\.codely-cli\skills\ (Windows) / ~/.codely-cli/skills/ (Linux/macOS)
+## Scaffold a competition project
+
+Run from the cloned repository or installed skill directory. Preview first:
+
+```powershell
+node .\scripts\scaffold.cjs "D:\path\to\competition" --dry-run
+node .\scripts\scaffold.cjs "D:\path\to\competition"
 ```
 
-Then run your agent's reload command (e.g. `/skills reload`, verify with `/skills list`).
+Existing template files are skipped by default. Passing `--force` explicitly enables overwrite. The script runs on Node.js under Windows, Linux, and macOS.
 
-### Option 3: Cursor / other rule-based editors
-
-Point your project rules at `SKILL.md`, e.g. add a rule in `.cursor/rules/` that references this file.
-
-### Option 4: No agent runtime — just paste it
-
-Open `SKILL.md` (plus `references/*.md` as needed) and paste it into any chat AI as the system/first message. The workflows are plain Markdown; any competent LLM can follow them.
-
-### Option 5: Scaffold only (no AI at all)
-
-You don't need the skill runtime — just copy the templates:
-
-```bash
-node scripts/scaffold.cjs /path/to/your/competition
-```
-
-This creates the full skeleton (idempotent):
+Generated structure:
 
 ```text
-your-competition/
-├── 00_START_HERE.md     # single entry point (00_先看这里.md)
-├── README.md
-├── AGENTS.md            # AI constraints & routing
-├── notes/               # persistent notes + 2 ledgers
-├── scripts/
-├── results/
-├── backups/             # baseline snapshots (zip + SHA256)
-├── source/
-├── deliver/
-├── archive/
-└── tmp/
+<competition>/
+|-- 00_先看这里.md
+|-- README.md
+|-- AGENTS.md
+|-- notes/
+|   |-- README.md
+|   |-- _evaluations.md
+|   |-- _submissions.md
+|   `-- _closed_routes.md
+|-- scripts/
+|-- results/
+|-- backups/
+|-- source/
+|-- deliver/
+|-- archive/
+`-- tmp/
 ```
 
 ## Quick start
 
-1. **New competition** → ask your AI to scaffold: "scaffold my competition project" / “帮我搭比赛工程骨架”
-2. **Every session** → the AI reads the entry point + authority notes before touching anything.
-3. **Every experiment** → single variable → L0 smoke → L1 A/B → L2 full eval → L3 gate check → note written.
-4. **Official score arrives** → Workflow G: promote or close, baseline snapshot, ledgers updated.
+1. Fill in the primary metric, direction, constraints, noise method, and promotion rule in `00_先看这里.md`.
+2. Translate official rules and Q&A into stable, executable red lines in `AGENTS.md`.
+3. Establish a Git baseline or content-hash snapshot and reproduce the baseline.
+4. Record local evaluations in `_evaluations.md` and official submissions in `_submissions.md`.
+5. Use experiment notes to preserve hypotheses, boundaries, raw evidence, and outcomes.
 
-## Repo layout
+## Repository layout
 
 ```text
-├── SKILL.md                    # skill entry (workflows A–G + blockers)
-├── references/
-│   ├── methodology.md          # full methodology
-│   ├── templates.md            # all templates
-│   └── adaptations.md          # per-competition-type trimming table
-├── assets/scaffold/            # skeleton template files
-└── scripts/scaffold.cjs        # one-shot scaffolder
+|-- SKILL.md
+|-- agents/openai.yaml
+|-- references/
+|   |-- methodology.md
+|   |-- evaluation.md
+|   |-- templates.md
+|   `-- adaptations.md
+|-- assets/scaffold/
+|-- scripts/scaffold.cjs
+`-- tests/scaffold.test.cjs
 ```
 
-## Adapting to your competition type
+## Validation
 
-The four non-negotiables for any competition: **notes system, red lines, unpollutable baseline, anti-self-deception**. Everything else adapts — see `references/adaptations.md` for Kaggle-style, systems/performance, hackathons, CTF, robotics, and research-replication variants.
+```powershell
+node --check .\scripts\scaffold.cjs
+node --test .\tests\scaffold.test.cjs
+```
+
+Validate the skill frontmatter with Codex's `skill-creator/scripts/quick_validate.py` when available.
 
 ## License
 

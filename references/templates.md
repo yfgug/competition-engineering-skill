@@ -1,179 +1,48 @@
-# 模板集（直接复制填充）
+# 模板字段说明
 
-## 1. 入口文件 `00_先看这里.md`
+规范模板以 `assets/scaffold/` 中的文件为唯一来源。需要创建或更新项目文件时，读取对应模板；本文件只解释字段，避免复制模板后产生两套内容。
 
-```markdown
-# <比赛名> 工程入口
-更新日期: YYYY-MM-DD
-当前阶段: <跑通基线 / 冲分 / 冲刺交付>
-当前最优版本: <commit / 快照名 + 官方成绩 + 日期>
-最新权威笔记: notes/YYYYMMDD_NN_....md
-下一步唯一动作: <一句话>
-现场执行入口: <一条命令 / 一个脚本>
-```
+| 目标文件 | 规范模板 | 用途 |
+|---|---|---|
+| `00_先看这里.md` | `assets/scaffold/00_先看这里.md` | 唯一动态入口、指标契约、当前推荐与下一步 |
+| `AGENTS.md` | `assets/scaffold/AGENTS.md` | 稳定红线、权限和环境入口 |
+| `notes/README.md` | `assets/scaffold/notes/README.md` | 历史索引 |
+| 实验笔记 | `assets/scaffold/notes/_TEMPLATE.md` | 假设、边界、证据、结果和更正关系 |
+| `notes/_evaluations.md` | `assets/scaffold/notes/_evaluations.md` | 本地评测和噪声 |
+| `notes/_submissions.md` | `assets/scaffold/notes/_submissions.md` | 官方提交 |
+| `notes/_closed_routes.md` | `assets/scaffold/notes/_closed_routes.md` | 已拒绝路线和重试条件 |
+| `results/<主题>_<日期>/summary.md` | `assets/scaffold/results/_TEMPLATE.md` | 原始结果索引和复现信息 |
 
-规则：永远只指向一个"当前推荐"，旧推荐自动成为历史。
+## 入口字段
 
-## 2. `AGENTS.md` 五段结构
+- **主指标与方向**：必须声明 `maximize` 或 `minimize`。
+- **硬约束**：正确性、时限、资源、赛规等任何一项失败即不能晋升。
+- **噪声方法**：说明如何估计，而不是只填一个没有来源的波动数字。
+- **当前推荐**：使用 commit SHA 或内容哈希，不依赖可移动分支名。
+- **权威证据**：指向笔记、原始结果或官方记录，不把摘要当作原始证据。
+- **下一步唯一动作**：当前最有价值、可执行的一步。
 
-```markdown
-# AI 工作约束
+## 笔记头部
 
-## 1. 目标
-<一段话：赛题、评分构成、当前目标>
+模板使用 YAML frontmatter，字段职责如下：
 
-## 2. 红线（hard stop，逐条可执行）
-- 不改 <官方固定的东西：参数/输入/评测器/模型/数据…>
-- 不做 <官方 Q&A 明确禁止的技术…>
-- 不覆盖、不 force-push 基线分支
-- 提交/推送/交付必须用户明确授权
-- <赛种特定红线…>
+- `status`：笔记状态，`open | pending | closed`。
+- `outcome`：实验结果，`pending | pass | fail | inconclusive | invalid`。
+- `verification`：`verified | unverified`。
+- `work_type`：`causal | repair | integration | infrastructure`。
+- `baseline`：commit SHA 或内容哈希。
+- `initial_tree`：实验开始时的工作树边界。
+- `gate`：预先定义的方向、约束和门槛。
+- `supersedes`：本文纠正或替代的笔记。
+- `retry_when`：`fail/closed` 时必填的新证据条件。
 
-## 3. 权威路由（读文件顺序）
-1. notes/XXXX.md — <一句话状态>
-2. notes/YYYY.md — <一句话状态>
-（只列 3–8 篇当前权威；历史索引见 notes/README.md；closed 清单见 notes/_closed_routes.md）
+## 台账边界
 
-## 4. 工作纪律
-- 单变量；一场会话只推进一个方向；每条路线先写门槛再动手
-- 组合实验必须先有单变量结论，组合后重新走完整验证单独审计
-- 快检只判"能否继续"，不预测最终分
-- 实质事件后先写笔记再换方向；closed 路线登记 _closed_routes.md
-- 开新路线前先查 _closed_routes.md 和 _submissions.md（方差）
-- 基线只在干净副本上做实验（动手前 git status --short 为空）
+- 本地运行、随机种子、方差和无效评测进入 `_evaluations.md`。
+- 真实官方提交和提交额度进入 `_submissions.md`。
+- 只有有效评测得到的 `fail` 才进入 `_closed_routes.md`。
+- 原始大文件放在 `results/`，台账和笔记只保存路径、哈希与摘要。
 
-## 5. 环境速查
-- 平台/容器入口: <…>
-- 常用命令: <构建 / 启动 / 冒烟 / 全量评测>
-- 已知环境坑: <指向对应笔记>
-```
+## 更正与安全
 
-## 3. 笔记头部（每篇必有，机器可解析）
-
-```markdown
-# <一句话标题>
-
-- 状态: open / pending / closed
-- 日期: YYYY-MM-DD
-- supersedes: <被本文取代的笔记文件名，无则 none>
-- 结论: <一句话；closed 必须给出数字证据>
-- 重试条件: <出现什么新证据才允许重开>（closed 必填）
-```
-
-## 4. 笔记正文骨架（七要素）
-
-```markdown
-## 背景
-为什么做，预期收益来源。
-
-## 方法
-- 环境: <作业号/容器/机器>
-- 基线: <commit / 快照名>
-- 改动: <精确到文件级>
-
-## 结果
-<原始数字直接贴：评分 + 过程指标 + 输出漂移情况>
-
-## 判定
-对照门槛 <门槛原文>：过 / 不过。不过 → closed。
-
-## 未变清单
-- 未 commit / 未 push / 未提交官方 / 未覆盖基线 / …
-
-## 坑
-<反直觉现象，尤其环境类>
-
-## 下一步
-<只写一个推荐动作>
-```
-
-## 5. `notes/README.md` 索引
-
-```markdown
-# 笔记索引
-
-## 当前权威（按优先级）
-1. YYYYMMDD_NN_xxx_closed.md — <一句话结论>
-2. ...
-
-## 全部笔记
-<文件列表，新增笔记时追加一行>
-```
-
-纪律：只做路由，不复述正文摘要。
-
-## 6. closed 路线登记表 `notes/_closed_routes.md`
-
-```markdown
-# Closed 路线登记表
-
-> 开新路线前先查此表；命中"已关闭且重试条件未满足"的路线直接拒绝执行。
-> 每关闭一条路线追加一行，不删旧行。
-
-| 日期 | 路线 | 一句话证据 | 重试条件 |
-|---|---|---|---|
-| YYYY-MM-DD | <主题> | <关键数字，如"仅 +0.3%，低于 1% 门槛"> | <出现什么新证据才允许重开> |
-```
-
-## 7. 评测台账 `notes/_submissions.md`
-
-```markdown
-# 评测台账
-
-> 每次官方提交追加一行。同一版本重复提交的差值 = 评测方差实测。
-> 出分与预期差异在此表波动范围内 → 视为噪声，禁止为噪声改代码。
-
-| 日期 | commit/分支 | 版本性质 | 期望 | 实际出分 | 差值 | 备注 |
-|---|---|---|---|---|---|---|
-| YYYY-MM-DD | <sha/分支名> | best / candidate | <分数> | <分数> | ±x.x | |
-```
-
-## 8. 结果归档模板 `results/<主题>_<日期>/summary.md`
-
-```markdown
-# <主题> <日期>
-
-- 对应笔记: notes/YYYYMMDD_NN_xxx.md
-- 环境: <作业号/容器>
-- 判定: 过 / 不过门槛
-
-## 原始数据
-<贴关键数字或指向本目录数据文件>
-
-## 附带文件
-<result 文件、日志、diff 清单>
-```
-
-## 9. 现场执行卡（关键日使用）
-
-```markdown
-# <场景> 执行卡
-前提检查: <…>
-步骤 1: <现成命令，只填路径空格>
-步骤 2: <…>
-异常处理: <常见故障 → 现成对策>
-回滚: <一条命令>
-```
-
-## 10. 交付审计清单
-
-```text
-□ ZIP + SHA256 + manifest（逐文件哈希）
-□ 独立目录解压校验（解一遍、核对哈希）
-□ 无凭证泄漏（.git/config、token、AK/SK、笔记本、日志）
-□ git status 干净；源码从 git archive HEAD 导出（非复制工作树）
-□ 版本号与笔记一致
-□ 一条命令复现最优版本
-□ 旧交付物已移入 archive/ 并记录 SHA256
-```
-
-## 11. 晋升检查清单（官方出分高于保底后一次做完）
-
-```text
-□ git tag + git archive 导出 zip + SHA256 → backups/
-□ promotion 笔记（commit/成绩/与旧保底对比数字），supersede 旧 best 笔记
-□ 00_先看这里.md 更新"当前最优版本"与"最新权威笔记"
-□ notes/README.md 权威路由置顶新笔记
-□ _submissions.md 追加一行
-□ 后续实验从新保底拉分支
-```
+历史记录默认追加更正并保留 `supersedes` 关系。凭证、个人信息或危险错误不受“不可修改历史”约束：清理敏感内容后留下更正说明和可审计记录。

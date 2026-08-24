@@ -1,0 +1,7 @@
+interface:
+  display_name: "Competition Engineering"
+  short_description: "管理多轮竞赛中的实验、评测、基线晋升与可复现交付"
+  default_prompt: "使用 $competition-engineering 为这个多轮竞赛项目建立可审计的实验、评测和基线流程。"
+
+policy:
+  allow_implicit_invocation: true
