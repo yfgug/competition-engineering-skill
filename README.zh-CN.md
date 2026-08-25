@@ -2,6 +2,10 @@
 
 [English](README.md) | **简体中文**
 
+[![Validate](https://github.com/yfgug/competition-engineering-skill/actions/workflows/validate.yml/badge.svg)](https://github.com/yfgug/competition-engineering-skill/actions/workflows/validate.yml)
+[![Release](https://img.shields.io/github/v/release/yfgug/competition-engineering-skill)](https://github.com/yfgug/competition-engineering-skill/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 一套面向多轮竞赛与实验型论文的人机协作协议：用可核验证据、持久化笔记、指标契约、claim-evidence、实验状态机和不可变基线，降低上下文丢失、重复实验、选择性报告、结论漂移与越权提交的风险。
 
 > 方法来自真实的大模型推理优化比赛实践：200+ 队伍中前 23 名晋级国赛决赛，最终第 6 名；线上赛阶段官方分从 71.9 提升到 89.11，全程零违规。仓库在此基础上做了通用化，但不同赛种和研究类型仍需按评测形态裁剪。
@@ -119,6 +123,8 @@ node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --json
 
 ```text
 |-- SKILL.md
+|-- CITATION.cff
+|-- CHANGELOG.md
 |-- agents/openai.yaml
 |-- references/
 |   |-- methodology.md
@@ -131,8 +137,17 @@ node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --json
 |-- assets/research/
 |-- scripts/scaffold.cjs
 |-- scripts/audit_workspace.cjs
+|-- examples/qwen-inference-optimization.md
 `-- tests/
 ```
+
+## 脱敏案例
+
+[大模型推理优化存量工程接管案例](examples/qwen-inference-optimization.md) 展示了如何在不批量重命名历史笔记、不立即移动重复结果目录的前提下恢复可信入口，也说明了竞赛证据转化为论文 claim 时的适用范围边界。
+
+## 引用与版本
+
+GitHub 可以根据 [`CITATION.cff`](CITATION.cff) 生成引用格式。论文、公开 artifact 或长期复现应固定到 release/tag，不要只引用持续移动的分支；版本变化见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ## 验证
 
@@ -140,6 +155,7 @@ node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --json
 node --check .\scripts\scaffold.cjs
 node --check .\scripts\audit_workspace.cjs
 node --test .\tests\scaffold.test.cjs .\tests\audit-workspace.test.cjs
+node .\scripts\validate_skill.cjs
 ```
 
 GitHub Actions 会在 Windows 和 Linux 上运行同一组验证。Skill frontmatter 也可使用 Codex `skill-creator/scripts/quick_validate.py` 验证。

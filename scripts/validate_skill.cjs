@@ -36,6 +36,8 @@ function readUtf8(file) {
 const required = [
   'README.md',
   'README.zh-CN.md',
+  'CITATION.cff',
+  'CHANGELOG.md',
   'SKILL.md',
   '.github/workflows/validate.yml',
   'agents/openai.yaml',
@@ -47,6 +49,7 @@ const required = [
   'references/adaptations.md',
   'scripts/scaffold.cjs',
   'scripts/audit_workspace.cjs',
+  'examples/qwen-inference-optimization.md',
   'assets/scaffold/00_先看这里.md',
   'assets/scaffold/notes/_TEMPLATE.md',
   'assets/research/paper/README.md',
@@ -79,6 +82,20 @@ for (const field of ['display_name:', 'short_description:', 'default_prompt:', '
 }
 if (!openai.includes('$competition-engineering')) {
   error('default_prompt must mention $competition-engineering', openaiPath);
+}
+
+const citationPath = path.join(root, 'CITATION.cff');
+const citation = readUtf8(citationPath);
+for (const field of [
+  'cff-version: 1.2.0',
+  'title:',
+  'authors:',
+  'version: 1.1.0',
+  'date-released: 2026-08-25',
+  'repository-code:',
+  'license: MIT',
+]) {
+  if (!citation.includes(field)) error('missing or unexpected ' + field, citationPath);
 }
 
 const markdownFiles = [];

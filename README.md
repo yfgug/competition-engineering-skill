@@ -2,6 +2,10 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+[![Validate](https://github.com/yfgug/competition-engineering-skill/actions/workflows/validate.yml/badge.svg)](https://github.com/yfgug/competition-engineering-skill/actions/workflows/validate.yml)
+[![Release](https://img.shields.io/github/v/release/yfgug/competition-engineering-skill)](https://github.com/yfgug/competition-engineering-skill/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A reusable human-AI protocol for multi-round competitions and experiment-driven papers. It anchors decisions to verifiable evidence, persistent notes, metric contracts, claim-evidence links, explicit route states, and immutable baselines.
 
 > The method was distilled from an LLM inference optimization competition: 23 finalists from 200+ teams, sixth place in the national final, and an online-stage score improvement from 71.9 to 89.11 with no rule violations. The repository generalizes that experience, but each competition and research type still needs evaluation-specific adaptation.
@@ -116,6 +120,8 @@ It reports missing entrypoints, stale absolute paths, potentially duplicate dire
 
 ```text
 |-- SKILL.md
+|-- CITATION.cff
+|-- CHANGELOG.md
 |-- agents/openai.yaml
 |-- references/
 |   |-- methodology.md
@@ -128,8 +134,17 @@ It reports missing entrypoints, stale absolute paths, potentially duplicate dire
 |-- assets/research/
 |-- scripts/scaffold.cjs
 |-- scripts/audit_workspace.cjs
+|-- examples/qwen-inference-optimization.md
 `-- tests/
 ```
+
+## Case study
+
+The [sanitized LLM inference optimization case study](examples/qwen-inference-optimization.md) shows how to adopt a mature workspace without bulk-renaming historical notes or immediately moving overlapping result directories. It also demonstrates the boundary between competition evidence and paper claims.
+
+## Citation and releases
+
+GitHub can generate citation formats from [`CITATION.cff`](CITATION.cff). Pin public or paper-facing use to a tagged release instead of a moving branch, and see [`CHANGELOG.md`](CHANGELOG.md) for versioned changes.
 
 ## Validation
 
@@ -137,6 +152,7 @@ It reports missing entrypoints, stale absolute paths, potentially duplicate dire
 node --check .\scripts\scaffold.cjs
 node --check .\scripts\audit_workspace.cjs
 node --test .\tests\scaffold.test.cjs .\tests\audit-workspace.test.cjs
+node .\scripts\validate_skill.cjs
 ```
 
 GitHub Actions runs the same checks on Windows and Linux. Validate the skill frontmatter with Codex's `skill-creator/scripts/quick_validate.py` when available.
