@@ -66,8 +66,26 @@ test('--force overwrites existing template files', t => {
   assert.match(forced.stdout, /覆盖/);
 });
 
-test('rejects unknown options and multiple targets', () => {
+test('research profile adds paper and data provenance templates', t => {
+  const target = createTarget(t, '论文 项目');
+  const result = run([target, '--profile', 'research']);
+
+  assert.equal(result.status, 0, result.stderr);
+  for (const relative of [
+    'paper/README.md',
+    'paper/CLAIMS.md',
+    'paper/ARTIFACTS.md',
+    'data/README.md',
+  ]) {
+    assert.equal(fs.existsSync(path.join(target, relative)), true, relative);
+  }
+  assert.match(result.stdout, /profile=research/);
+});
+
+test('rejects unknown options, profiles, and multiple targets', () => {
   assert.equal(run(['target', '--wat']).status, 2);
+  assert.equal(run(['target', '--profile', 'unknown']).status, 2);
+  assert.equal(run(['target', '--profile']).status, 2);
   assert.equal(run(['one', 'two']).status, 2);
 });
 

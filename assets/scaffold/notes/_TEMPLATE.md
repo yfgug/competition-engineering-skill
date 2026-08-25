@@ -5,6 +5,7 @@ verification: unverified
 work_type: causal
 date: YYYY-MM-DD
 route: "<route-slug>"
+claims: []
 baseline: "<commit-or-content-hash>"
 initial_tree: "<clean-or-known-change-summary>"
 gate: "<direction + constraints + threshold>"
@@ -33,6 +34,7 @@ evidence:
 - 初始工作树: <git status 摘要>
 - 改动: <精确到文件级>
 - 评测命令: <命令>
+- 数据版本: <ID / hash / none>
 
 ## 结果
 
@@ -40,6 +42,7 @@ evidence:
 - 硬约束: <逐项通过/失败>
 - 有效性: valid / invalid
 - 原始证据: <results 路径、日志或官方记录>
+- 对应 claim: <paper/CLAIMS.md ID / none>
 - 结果分类: pending / pass / fail / inconclusive / invalid
 
 ## 判定
@@ -49,7 +52,7 @@ evidence:
 ## 未变清单
 
 - <没有改动的关键配置、输入、接口或用户文件>
-- <未执行的外部动作，如未 push / 未官方提交>
+- <未执行的外部动作，如未 push / 未外部提交>
 
 ## 风险与异常
 

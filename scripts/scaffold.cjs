@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * 一键搭建比赛工程骨架。
+ * 一键搭建竞赛或实验研究工程骨架。
  *
  * 用法:
- *   node scaffold.cjs <目标目录> [--dry-run] [--force]
+ *   node scaffold.cjs <目标目录> [--profile competition|research] [--dry-run] [--force]
  */
 const fs = require('fs');
 const path = require('path');
@@ -13,14 +13,16 @@ let target;
 let force = false;
 let dryRun = false;
 let showHelp = false;
+let profile = 'competition';
 
 function printUsage(stream = process.stdout) {
   stream.write([
-    '用法: node scaffold.cjs <目标目录> [--dry-run] [--force]',
+    '用法: node scaffold.cjs <目标目录> [--profile competition|research] [--dry-run] [--force]',
     '',
     '选项:',
     '  --dry-run  只显示将执行的操作，不创建或修改文件',
     '  --force    覆盖已存在的模板文件',
+    '  --profile  competition（默认）或 research（增加论文与数据溯源模板）',
     '  -h, --help 显示帮助',
     '',
   ].join('\n'));
@@ -32,11 +34,20 @@ function fail(message) {
   process.exit(2);
 }
 
-for (const arg of args) {
+for (let index = 0; index < args.length; index += 1) {
+  const arg = args[index];
   if (arg === '--force') {
     force = true;
   } else if (arg === '--dry-run') {
     dryRun = true;
+  } else if (arg === '--profile') {
+    index += 1;
+    if (index >= args.length) {
+      fail('--profile 缺少值');
+    }
+    profile = args[index];
+  } else if (arg.startsWith('--profile=')) {
+    profile = arg.slice('--profile='.length);
   } else if (arg === '-h' || arg === '--help') {
     showHelp = true;
   } else if (arg.startsWith('-')) {
@@ -57,10 +68,21 @@ if (!target) {
   fail('缺少目标目录');
 }
 
+if (!['competition', 'research'].includes(profile)) {
+  fail(`不支持的 profile: ${profile}`);
+}
+
 const skillRoot = path.resolve(__dirname, '..');
 const scaffoldDir = path.join(skillRoot, 'assets', 'scaffold');
+const researchDir = path.join(skillRoot, 'assets', 'research');
 const root = path.resolve(target);
+const templateDirs = [scaffoldDir];
 const dirs = ['notes', 'scripts', 'results', 'backups', 'source', 'deliver', 'archive', 'tmp'];
+
+if (profile === 'research') {
+  templateDirs.push(researchDir);
+  dirs.push('paper', 'data');
+}
 const counts = { write: 0, overwrite: 0, skip: 0 };
 
 function isSameOrInside(candidate, parent) {
@@ -118,8 +140,10 @@ function copyRecursive(srcDir, destDir) {
 function ensureProjectDirectories() {
   for (const name of dirs) {
     const dir = path.join(root, name);
-    const scaffoldSource = path.join(scaffoldDir, name);
-    const sourceHasFiles = fs.existsSync(scaffoldSource) && fs.readdirSync(scaffoldSource).length > 0;
+    const sourceHasFiles = templateDirs.some(templateDir => {
+      const templateSource = path.join(templateDir, name);
+      return fs.existsSync(templateSource) && fs.readdirSync(templateSource).length > 0;
+    });
     const destinationHasFiles = fs.existsSync(dir) && fs.readdirSync(dir).length > 0;
 
     if (dryRun) {
@@ -140,11 +164,13 @@ function ensureProjectDirectories() {
   }
 }
 
-copyRecursive(scaffoldDir, root);
+for (const templateDir of templateDirs) {
+  copyRecursive(templateDir, root);
+}
 ensureProjectDirectories();
 
 const mode = dryRun ? '预览完成，未修改文件' : '骨架已就绪';
-console.log(`\n${mode}: ${root}`);
+console.log(`\n${mode}: ${root} (profile=${profile})`);
 console.log(`汇总: 写入 ${counts.write}，覆盖 ${counts.overwrite}，跳过 ${counts.skip}`);
 
 if (!dryRun) {

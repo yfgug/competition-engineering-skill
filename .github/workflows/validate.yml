@@ -1,0 +1,30 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Check script syntax
+        run: |
+          node --check scripts/scaffold.cjs
+          node --check scripts/audit_workspace.cjs
+          node --check scripts/validate_skill.cjs
+      - name: Run tests
+        run: node --test tests/scaffold.test.cjs tests/audit-workspace.test.cjs
+      - name: Validate skill repository
+        run: node scripts/validate_skill.cjs

@@ -7,6 +7,7 @@
 - 环境与数据: <作业号/容器/机器/数据版本>
 - 评测命令: <可复现命令>
 - 结果分类: pending / pass / fail / inconclusive / invalid
+- 对应 claim: <paper/CLAIMS.md ID / none>
 
 ## 指标
 
