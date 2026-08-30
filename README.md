@@ -40,11 +40,21 @@ It should not activate automatically for prose-only writing, ordinary literature
 
 ### Codex
 
+User-level installation:
+
 ```powershell
-Copy-Item -Recurse .\competition-engineering "$HOME\.codex\skills\competition-engineering"
+New-Item -ItemType Directory -Force "$HOME\.agents\skills" | Out-Null
+git clone https://github.com/yfgug/competition-engineering-skill.git "$HOME\.agents\skills\competition-engineering"
 ```
 
-The repository includes `agents/openai.yaml`. Invoke it explicitly with `$competition-engineering` or allow normal automatic selection.
+Repository-scoped installation:
+
+```powershell
+New-Item -ItemType Directory -Force ".agents\skills" | Out-Null
+git clone https://github.com/yfgug/competition-engineering-skill.git ".agents\skills\competition-engineering"
+```
+
+These are the current [official Codex skill discovery paths](https://developers.openai.com/codex/skills). The repository includes `agents/openai.yaml`. Invoke it explicitly with `$competition-engineering` in Codex or `@competition-engineering` in ChatGPT, or allow normal automatic selection.
 
 ### Claude Code
 
@@ -103,9 +113,20 @@ Run the read-only audit before applying templates:
 ```powershell
 node .\scripts\audit_workspace.cjs "D:\path\to\existing-project"
 node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --json
+node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --ready --strict
+node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --ready --profile competition --strict
 ```
 
-It reports missing entrypoints, stale absolute paths, potentially duplicate directories, oversized AGENTS files, legacy notes, and notes newer than the current entry. Warnings are investigation leads; the audit never modifies the target.
+It reports missing entrypoints, stale absolute paths, potentially duplicate directories, oversized AGENTS files, legacy notes, and notes newer than the current entry. `--ready` also detects unresolved placeholders in the active competition or research handoff files. For a legacy workspace whose entry does not declare its project type, pass `--profile competition` or `--profile research` explicitly; a conflicting entry declaration remains a warning.
+
+For a large first-party scan, exclude copied repositories, generated documentation, or vendor trees explicitly and raise the deterministic scan limit only when needed:
+
+```powershell
+node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --all `
+  --exclude "**/vendor/**" --exclude "analysis_results/**/repo" --max-files 20000
+```
+
+`--exclude` accepts repeatable relative-path globs. Warnings are investigation leads; the audit never modifies the target.
 
 ## Quick start
 
@@ -147,6 +168,8 @@ The [sanitized LLM inference optimization case study](examples/qwen-inference-op
 GitHub can generate citation formats from [`CITATION.cff`](CITATION.cff). Pin public or paper-facing use to a tagged release instead of a moving branch, and see [`CHANGELOG.md`](CHANGELOG.md) for versioned changes.
 
 ## Validation
+
+The scripts require Node.js 22 or newer. CI covers Node.js 22 and 24 on Windows and Linux.
 
 ```powershell
 node --check .\scripts\scaffold.cjs

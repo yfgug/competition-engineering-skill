@@ -29,7 +29,7 @@
 |-- scripts/               # 可重复执行的脚本
 |-- results/               # 原始评测产物及 summary
 |-- backups/               # 必要的离线灾备快照
-|-- source/                # 比赛源码
+|-- source/                # 项目源码
 |-- deliver/               # 当前待交付物
 |-- archive/               # 历史交付和停止维护的材料
 |-- paper/                 # 研究 profile：claim、图表与论文状态

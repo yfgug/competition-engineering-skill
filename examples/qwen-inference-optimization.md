@@ -10,7 +10,7 @@ The workspace was effective but had accumulated history faster than its governan
 
 ## Read-only audit
 
-The audit scanned 357 Markdown files and reported 0 errors and 41 warnings. The warnings were investigation leads, not automatic proof that files were wrong.
+The default governance-focused audit scanned 357 Markdown files and reported 0 errors and 41 warnings. The warnings were investigation leads, not automatic proof that files were wrong. Full-workspace scans should exclude copied repositories and generated trees explicitly.
 
 | Finding | Observed shape | Engineering risk |
 |---|---|---|

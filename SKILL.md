@@ -48,7 +48,7 @@ description: 管理持续多轮、带量化评测、需要跨会话保存实验�
 | `references/adaptations.md` | 按算法、系统、黑客松、CTF、机器人或科研赛种裁剪时 |
 | `assets/scaffold/` | 创建项目骨架或读取规范模板时 |
 | `scripts/scaffold.cjs` | 创建竞赛或研究骨架时；从本 Skill 目录解析绝对路径后执行 |
-| `scripts/audit_workspace.cjs` | 只读审计现有工作区的结构、入口、路径和编码风险时 |
+| `scripts/audit_workspace.cjs` | 只读审计现有工作区的结构、入口、路径、编码和交接就绪度时 |
 
 ## 冷启动
 
@@ -67,6 +67,7 @@ description: 管理持续多轮、带量化评测、需要跨会话保存实验�
 2. 找出真实源码根、当前推荐版本、最新权威证据和用户已有改动。
 3. 先创建或修复唯一动态入口，再把旧目录映射到规范职责；路径迁移前保留兼容说明。
 4. 只在用户授权后移动、归档或删除历史材料。迁移本身写一篇笔记并记录未变清单。
+5. 大型工作区全量扫描时用重复的 `--exclude <glob>` 排除复制仓库、vendor 和生成树；需要确认当前交接材料已填完时运行 `--ready --strict`，存量入口缺少项目类型时显式补 `--profile competition|research`。
 
 ## 会话协议
 

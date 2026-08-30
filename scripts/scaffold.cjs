@@ -84,6 +84,7 @@ if (profile === 'research') {
   dirs.push('paper', 'data');
 }
 const counts = { write: 0, overwrite: 0, skip: 0 };
+const changedFiles = new Set();
 
 function isSameOrInside(candidate, parent) {
   const relative = path.relative(parent, candidate);
@@ -116,7 +117,10 @@ function copyRecursive(srcDir, destDir) {
     fs.mkdirSync(destDir, { recursive: true });
   }
 
-  for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+  const entries = fs.readdirSync(srcDir, { withFileTypes: true })
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  for (const entry of entries) {
     const src = path.join(srcDir, entry.name);
     const dest = path.join(destDir, entry.name);
 
@@ -133,8 +137,36 @@ function copyRecursive(srcDir, destDir) {
     if (!dryRun && action !== 'skip') {
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.copyFileSync(src, dest);
+      changedFiles.add(dest);
     }
   }
+}
+
+function applyProfileDefaults() {
+  if (dryRun) return;
+
+  const entryPath = path.join(root, '00_先看这里.md');
+  if (!changedFiles.has(entryPath)) return;
+
+  let text = fs.readFileSync(entryPath, 'utf8');
+  const title = profile === 'research' ? '# <研究项目名> 工程入口' : '# <比赛名> 工程入口';
+  const researchType = profile === 'research'
+    ? '<reproduction / exploratory / confirmatory / competition-to-paper>'
+    : 'none';
+  const stage = profile === 'research'
+    ? '<研究设计 / 跑通基线 / 实验 / 分析 / 写作 / 冻结>'
+    : '<跑通基线 / 实验 / 候选验证 / 冲刺交付>';
+
+  text = text
+    .replace('# <项目名> 工程入口', title)
+    .replace('- 项目类型: competition / research', `- 项目类型: ${profile}`)
+    .replace(
+      '- 研究类型: none / reproduction / exploratory / confirmatory / competition-to-paper',
+      `- 研究类型: ${researchType}`,
+    )
+    .replace('- 当前阶段: <项目阶段>', `- 当前阶段: ${stage}`);
+
+  fs.writeFileSync(entryPath, text, 'utf8');
 }
 
 function ensureProjectDirectories() {
@@ -167,6 +199,7 @@ function ensureProjectDirectories() {
 for (const templateDir of templateDirs) {
   copyRecursive(templateDir, root);
 }
+applyProfileDefaults();
 ensureProjectDirectories();
 
 const mode = dryRun ? '预览完成，未修改文件' : '骨架已就绪';
@@ -174,5 +207,8 @@ console.log(`\n${mode}: ${root} (profile=${profile})`);
 console.log(`汇总: 写入 ${counts.write}，覆盖 ${counts.overwrite}，跳过 ${counts.skip}`);
 
 if (!dryRun) {
-  console.log('下一步唯一动作: 填写 00_先看这里.md 的指标契约。');
+  const next = profile === 'research'
+    ? '填写 00_先看这里.md 的研究类型、指标契约和下一步。'
+    : '填写 00_先看这里.md 的指标契约。';
+  console.log(`下一步唯一动作: ${next}`);
 }

@@ -4,6 +4,19 @@ Notable changes to this repository are documented here. The project follows sema
 
 ## [Unreleased]
 
+### Added
+
+- Audit readiness checks, repeatable path-glob exclusions, configurable scan limits, and stable JSON scan metadata.
+- Explicit project-profile overrides for readiness checks on legacy workspaces, with conflict warnings.
+- Regression tests for profile defaults, readiness, scan controls, and Windows paths containing spaces.
+- CI coverage for Node.js 22 and 24 on both Windows and Linux.
+
+### Fixed
+
+- Updated Codex installation documentation to the current `.agents/skills` discovery paths.
+- Removed competition-only wording from shared research scaffolds and initialized profile-specific entry fields.
+- Prevented false stale-path warnings for quoted or backtick-delimited Windows paths containing spaces.
+
 ## [1.1.0] - 2026-08-25
 
 ### Added

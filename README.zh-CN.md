@@ -41,13 +41,21 @@
 
 ### Codex
 
-复制目录到个人或项目 Skill 发现路径，例如：
+用户级安装：
 
 ```powershell
-Copy-Item -Recurse .\competition-engineering "$HOME\.codex\skills\competition-engineering"
+New-Item -ItemType Directory -Force "$HOME\.agents\skills" | Out-Null
+git clone https://github.com/yfgug/competition-engineering-skill.git "$HOME\.agents\skills\competition-engineering"
 ```
 
-仓库包含 `agents/openai.yaml`，默认允许自动发现，也可以显式使用 `$competition-engineering`。
+仓库级安装：
+
+```powershell
+New-Item -ItemType Directory -Force ".agents\skills" | Out-Null
+git clone https://github.com/yfgug/competition-engineering-skill.git ".agents\skills\competition-engineering"
+```
+
+这是当前[官方 Codex Skill 发现路径](https://developers.openai.com/codex/skills)。仓库包含 `agents/openai.yaml`，默认允许自动发现；Codex 可显式使用 `$competition-engineering`，ChatGPT 可使用 `@competition-engineering`。
 
 ### Claude Code
 
@@ -106,9 +114,20 @@ node .\scripts\scaffold.cjs "D:\path\to\research" --profile research
 ```powershell
 node .\scripts\audit_workspace.cjs "D:\path\to\existing-project"
 node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --json
+node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --ready --strict
+node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --ready --profile competition --strict
 ```
 
-审计会报告缺失入口、失效绝对路径、可能重复的目录、超大 AGENTS、旧式笔记和入口晚于新笔记等风险。警告是调查线索，不会修改目标项目。
+审计会报告缺失入口、失效绝对路径、可能重复的目录、超大 AGENTS、旧式笔记和入口晚于新笔记等风险。`--ready` 还会检查当前竞赛或研究交接文件中未填写的占位符。存量项目若入口还没有项目类型字段，可显式传入 `--profile competition` 或 `--profile research`；若与入口声明冲突，审计仍会报警。
+
+对大型一方工作区做全量扫描时，应显式排除复制仓库、生成文档或 vendor 目录，只在需要时提高确定性的文件上限：
+
+```powershell
+node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --all `
+  --exclude "**/vendor/**" --exclude "analysis_results/**/repo" --max-files 20000
+```
+
+`--exclude` 支持重复传入相对路径 glob。警告是调查线索，审计不会修改目标项目。
 
 ## 快速开始
 
@@ -150,6 +169,8 @@ node .\scripts\audit_workspace.cjs "D:\path\to\existing-project" --json
 GitHub 可以根据 [`CITATION.cff`](CITATION.cff) 生成引用格式。论文、公开 artifact 或长期复现应固定到 release/tag，不要只引用持续移动的分支；版本变化见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ## 验证
+
+脚本要求 Node.js 22 或更新版本；CI 在 Windows 和 Linux 上覆盖 Node.js 22 与 24。
 
 ```powershell
 node --check .\scripts\scaffold.cjs

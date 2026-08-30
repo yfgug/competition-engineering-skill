@@ -44,6 +44,10 @@ test('creates a scaffold and preserves existing files by default', t => {
   ]) {
     assert.equal(fs.existsSync(path.join(target, relative)), true, relative);
   }
+  const entry = fs.readFileSync(path.join(target, '00_先看这里.md'), 'utf8');
+  assert.match(entry, /^# <比赛名> 工程入口/m);
+  assert.match(entry, /^- 项目类型: competition$/m);
+  assert.match(entry, /^- 研究类型: none$/m);
 
   const readme = path.join(target, 'README.md');
   fs.writeFileSync(readme, 'CUSTOM\n', 'utf8');
@@ -79,7 +83,26 @@ test('research profile adds paper and data provenance templates', t => {
   ]) {
     assert.equal(fs.existsSync(path.join(target, relative)), true, relative);
   }
+  const entry = fs.readFileSync(path.join(target, '00_先看这里.md'), 'utf8');
+  const agents = fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8');
+  const readme = fs.readFileSync(path.join(target, 'README.md'), 'utf8');
+  assert.match(entry, /^# <研究项目名> 工程入口/m);
+  assert.match(entry, /^- 项目类型: research$/m);
+  assert.match(entry, /^- 研究类型: <reproduction \/ exploratory \/ confirmatory \/ competition-to-paper>$/m);
+  assert.doesNotMatch(agents, /赛题目标/);
+  assert.doesNotMatch(readme, /比赛源码/);
   assert.match(result.stdout, /profile=research/);
+});
+
+test('--force can switch generated profile defaults', t => {
+  const target = createTarget(t, '切换 profile');
+  assert.equal(run([target]).status, 0);
+
+  const switched = run([target, '--profile', 'research', '--force']);
+  assert.equal(switched.status, 0, switched.stderr);
+  const entry = fs.readFileSync(path.join(target, '00_先看这里.md'), 'utf8');
+  assert.match(entry, /^# <研究项目名> 工程入口/m);
+  assert.match(entry, /^- 项目类型: research$/m);
 });
 
 test('rejects unknown options, profiles, and multiple targets', () => {

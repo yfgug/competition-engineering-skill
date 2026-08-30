@@ -3,7 +3,8 @@
  * Read-only audit for competition and experimental-research workspaces.
  *
  * Usage:
- *   node audit_workspace.cjs <workspace> [--json] [--strict] [--all]
+ *   node audit_workspace.cjs <workspace> [--json] [--strict] [--all] [--ready]
+ *     [--profile competition|research] [--exclude <glob>] [--max-files <count>]
  */
 const fs = require('fs');
 const path = require('path');
@@ -15,15 +16,24 @@ let json = false;
 let strict = false;
 let showHelp = false;
 let scanAll = false;
+let ready = false;
+let profileOverride = null;
+let maxMarkdownFiles = 5000;
+const excludePatterns = [];
 
 function printUsage(stream = process.stdout) {
   stream.write([
-    '用法: node audit_workspace.cjs <工作区> [--json] [--strict] [--all]',
+    '用法: node audit_workspace.cjs <工作区> [--json] [--strict] [--all] [--ready]',
+    '       [--profile competition|research] [--exclude <glob>] [--max-files <count>]',
     '',
     '选项:',
     '  --json     输出机器可读 JSON',
     '  --strict   存在 warning 时返回非零状态',
-    '  --all      扫描整个工作区；默认只扫治理文档和实验记录',
+    '  --all      扫描工作区 Markdown；默认只扫治理文档和实验记录',
+    '  --ready    检查动态入口和研究证据文件是否仍含占位符',
+    '  --profile  为 --ready 指定存量项目类型，覆盖入口中的自动识别',
+    '  --exclude  排除相对路径 glob，可重复；例如 **/vendor/**',
+    '  --max-files Markdown 扫描上限，默认 5000',
     '  -h, --help 显示帮助',
     '',
   ].join('\n'));
@@ -35,13 +45,51 @@ function fail(message) {
   process.exit(2);
 }
 
-for (const arg of args) {
+function parsePositiveInteger(value, option) {
+  const number = Number(value);
+  if (!/^\d+$/.test(value) || !Number.isSafeInteger(number) || number < 1) {
+    fail(`${option} 必须是正整数`);
+  }
+  return number;
+}
+
+function parseProfile(value) {
+  if (!['competition', 'research'].includes(value)) {
+    fail('--profile 必须是 competition 或 research');
+  }
+  return value;
+}
+
+for (let index = 0; index < args.length; index += 1) {
+  const arg = args[index];
   if (arg === '--json') {
     json = true;
   } else if (arg === '--strict') {
     strict = true;
   } else if (arg === '--all') {
     scanAll = true;
+  } else if (arg === '--ready') {
+    ready = true;
+  } else if (arg === '--profile') {
+    index += 1;
+    if (index >= args.length || args[index].startsWith('-')) fail('--profile 缺少值');
+    profileOverride = parseProfile(args[index]);
+  } else if (arg.startsWith('--profile=')) {
+    profileOverride = parseProfile(arg.slice('--profile='.length));
+  } else if (arg === '--exclude') {
+    index += 1;
+    if (index >= args.length || args[index].startsWith('-')) fail('--exclude 缺少值');
+    excludePatterns.push(args[index]);
+  } else if (arg.startsWith('--exclude=')) {
+    const value = arg.slice('--exclude='.length);
+    if (!value) fail('--exclude 缺少值');
+    excludePatterns.push(value);
+  } else if (arg === '--max-files') {
+    index += 1;
+    if (index >= args.length) fail('--max-files 缺少值');
+    maxMarkdownFiles = parsePositiveInteger(args[index], '--max-files');
+  } else if (arg.startsWith('--max-files=')) {
+    maxMarkdownFiles = parsePositiveInteger(arg.slice('--max-files='.length), '--max-files');
   } else if (arg === '-h' || arg === '--help') {
     showHelp = true;
   } else if (arg.startsWith('-')) {
@@ -62,6 +110,10 @@ if (!target) {
   fail('缺少工作区');
 }
 
+if (profileOverride && !ready) {
+  fail('--profile 只能与 --ready 一起使用');
+}
+
 const root = path.resolve(target);
 if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
   fail(`工作区不存在或不是目录: ${root}`);
@@ -80,8 +132,9 @@ const skippedDirs = new Set([
   'external_refs',
 ]);
 const governanceDirs = ['notes', 'codex_persistent', 'results', 'analysis_results', 'paper', 'data'];
-const maxMarkdownFiles = 5000;
 const maxFileBytes = 2 * 1024 * 1024;
+let scanLimitHit = false;
+let excludedPaths = 0;
 
 function add(severity, code, message, file) {
   findings.push({
@@ -97,6 +150,50 @@ function normalizeRelative(file) {
   return relative.split(path.sep).join('/');
 }
 
+function globToRegExp(pattern) {
+  const raw = pattern.trim();
+  if (/^(?:[A-Za-z]:[\\/]|\/)/.test(raw)) fail('--exclude 必须是相对项目根的模式');
+
+  const normalized = raw
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/\/$/, '');
+  if (!normalized) fail('--exclude 不能是空模式');
+  if (normalized.split('/').includes('..')) fail('--exclude 不能包含 ..');
+
+  let source = '^';
+  for (let index = 0; index < normalized.length; index += 1) {
+    const char = normalized[index];
+    if (char === '*' && normalized[index + 1] === '*') {
+      if (normalized[index + 2] === '/') {
+        source += '(?:.*/)?';
+        index += 2;
+      } else {
+        source += '.*';
+        index += 1;
+      }
+    } else if (char === '*') {
+      source += '[^/]*';
+    } else if (char === '?') {
+      source += '[^/]';
+    } else {
+      source += char.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+    }
+  }
+  source += '$';
+  return new RegExp(source, process.platform === 'win32' ? 'i' : '');
+}
+
+const excludeMatchers = excludePatterns.map(pattern => ({
+  pattern,
+  regex: globToRegExp(pattern),
+}));
+
+function isUserExcluded(file) {
+  const relative = normalizeRelative(file);
+  return excludeMatchers.some(item => item.regex.test(relative) || item.regex.test(`${relative}/`));
+}
+
 function isSameOrInside(candidate, parent) {
   const relative = path.relative(parent, candidate);
   return relative === ''
@@ -104,11 +201,31 @@ function isSameOrInside(candidate, parent) {
 }
 
 function walkMarkdown(dir, output, maxDepth = Number.POSITIVE_INFINITY, depth = 0) {
-  if (output.length >= maxMarkdownFiles) return;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (output.length >= maxMarkdownFiles) return;
-    if (entry.isDirectory() && (skippedDirs.has(entry.name) || entry.name.startsWith('.'))) continue;
+  if (output.length >= maxMarkdownFiles) {
+    scanLimitHit = true;
+    return;
+  }
+
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name));
+  } catch (cause) {
+    add('warning', 'UNREADABLE_DIRECTORY', `无法读取目录: ${cause.code || cause.message}`, dir);
+    return;
+  }
+
+  for (const entry of entries) {
+    if (output.length >= maxMarkdownFiles) {
+      scanLimitHit = true;
+      return;
+    }
     const full = path.join(dir, entry.name);
+    if (isUserExcluded(full)) {
+      excludedPaths += 1;
+      continue;
+    }
+    if (entry.isDirectory() && (skippedDirs.has(entry.name) || entry.name.startsWith('.'))) continue;
     if (entry.isDirectory()) {
       if (depth < maxDepth) walkMarkdown(full, output, maxDepth, depth + 1);
     } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
@@ -118,7 +235,13 @@ function walkMarkdown(dir, output, maxDepth = Number.POSITIVE_INFINITY, depth = 
 }
 
 function readUtf8(file) {
-  const buffer = fs.readFileSync(file);
+  let buffer;
+  try {
+    buffer = fs.readFileSync(file);
+  } catch (cause) {
+    add('error', 'UNREADABLE_FILE', `无法读取文件: ${cause.code || cause.message}`, file);
+    return null;
+  }
   if (buffer.length > maxFileBytes) {
     add('warning', 'LARGE_MARKDOWN_SKIPPED', `文件超过 ${maxFileBytes} bytes，未进行内容审计`, file);
     return null;
@@ -195,20 +318,39 @@ const markdownFiles = [];
 if (scanAll) {
   walkMarkdown(root, markdownFiles);
 } else {
-  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+  const rootEntries = fs.readdirSync(root, { withFileTypes: true })
+    .sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of rootEntries) {
+    if (markdownFiles.length >= maxMarkdownFiles) {
+      scanLimitHit = true;
+      break;
+    }
+    const full = path.join(root, entry.name);
+    if (isUserExcluded(full)) {
+      excludedPaths += 1;
+      continue;
+    }
     if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
-      markdownFiles.push(path.join(root, entry.name));
+      markdownFiles.push(full);
     }
   }
   for (const name of governanceDirs) {
+    if (markdownFiles.length >= maxMarkdownFiles) {
+      scanLimitHit = true;
+      break;
+    }
     const dir = path.join(root, name);
+    if (isUserExcluded(dir)) {
+      excludedPaths += 1;
+      continue;
+    }
     if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
       const maxDepth = ['results', 'analysis_results'].includes(name) ? 1 : Number.POSITIVE_INFINITY;
       walkMarkdown(dir, markdownFiles, maxDepth);
     }
   }
 }
-if (markdownFiles.length >= maxMarkdownFiles) {
+if (scanLimitHit) {
   add('warning', 'MARKDOWN_SCAN_LIMIT', `Markdown 文件达到扫描上限 ${maxMarkdownFiles}`);
 }
 
@@ -249,12 +391,23 @@ if (brokenLinks.length > 20) {
 
 function extractAbsolutePaths(text) {
   const values = new Set();
-  const windows = /[A-Za-z]:\\(?:[^\\\r\n`"<>|?*\s]+\\)*[^\\\r\n`"<>|?*\s]+/g;
-  for (const match of text.matchAll(windows)) {
-    values.add(match[0].replace(/[.,;:)\]]+$/, ''));
+  const delimited = [
+    /`([A-Za-z]:\\[^`\r\n]+)`/g,
+    /"([A-Za-z]:\\[^"\r\n]+)"/g,
+    /'([A-Za-z]:\\[^'\r\n]+)'/g,
+    /`((?:\/|~\/)[^`\r\n]+)`/g,
+  ];
+  for (const pattern of delimited) {
+    for (const match of text.matchAll(pattern)) values.add(match[1].trim());
   }
-  for (const match of text.matchAll(/`((?:\/|~\/)[^`\r\n]+)`/g)) {
-    values.add(match[1].trim());
+
+  const withoutDelimited = text
+    .replace(/`[^`\r\n]*`/g, ' ')
+    .replace(/"[^"\r\n]*"/g, ' ')
+    .replace(/'[^'\r\n]*'/g, ' ');
+  const windows = /[A-Za-z]:\\(?:[^\\\r\n`"<>|?*]+\\)*[^\\\r\n`"<>|?*\s]+/g;
+  for (const match of withoutDelimited.matchAll(windows)) {
+    values.add(match[0].replace(/[.,;:)\]]+$/, ''));
   }
   return [...values];
 }
@@ -349,11 +502,99 @@ if (fs.existsSync(entryPath) && noteFiles.length > 0) {
   }
 }
 
+function getContent(file) {
+  if (contents.has(file)) return contents.get(file);
+  if (!fs.existsSync(file)) return null;
+  const text = readUtf8(file);
+  if (text !== null) contents.set(file, text);
+  return text;
+}
+
+function countPlaceholders(text) {
+  const patterns = [
+    /<[^>\r\n]+>/g,
+    /\bYYYY-MM-DD\b/g,
+    /\bYYYYMMDD_NN_[^\s`|]*\b/g,
+    /\bcompetition\s*\/\s*research\b/g,
+    /\bmaximize\s*\/\s*minimize\b/g,
+    /\btrue\s*\/\s*false\b/g,
+  ];
+  return patterns.reduce((count, pattern) => count + (text.match(pattern) || []).length, 0);
+}
+
+let detectedProfile = null;
+let readinessProfileSource = null;
+let unresolvedReadinessFiles = 0;
+if (ready) {
+  const entryText = getContent(entryPath);
+  const profileMatch = entryText && entryText.match(/^- 项目类型:\s*(competition|research)\s*$/mi);
+  if (profileOverride) {
+    readinessProfileSource = 'explicit';
+    if (profileMatch && profileMatch[1].toLowerCase() !== profileOverride) {
+      add(
+        'warning',
+        'PROFILE_OVERRIDE_CONFLICT',
+        `显式 profile=${profileOverride} 与入口中的 profile=${profileMatch[1].toLowerCase()} 冲突`,
+        entryPath,
+      );
+    }
+    detectedProfile = profileOverride;
+  } else if (profileMatch) {
+    detectedProfile = profileMatch[1].toLowerCase();
+    readinessProfileSource = 'entry';
+  } else {
+    readinessProfileSource = 'unknown';
+    add('warning', 'UNKNOWN_PROJECT_PROFILE', '无法从 00_先看这里.md 确认 competition 或 research profile', entryPath);
+  }
+
+  const readinessPaths = [
+    '00_先看这里.md',
+    'AGENTS.md',
+  ];
+  if (detectedProfile === 'research') {
+    readinessPaths.push(
+      'paper/README.md',
+      'paper/CLAIMS.md',
+      'paper/ARTIFACTS.md',
+      'data/README.md',
+    );
+  }
+
+  for (const relative of readinessPaths) {
+    const file = path.join(root, relative);
+    if (!fs.existsSync(file)) {
+      add('warning', 'MISSING_READINESS_PATH', `就绪检查缺少 ${relative}`, file);
+      continue;
+    }
+    const text = getContent(file);
+    if (text === null) continue;
+    const placeholderCount = countPlaceholders(text);
+    if (placeholderCount > 0) {
+      unresolvedReadinessFiles += 1;
+      add('warning', 'UNRESOLVED_PLACEHOLDERS', `就绪文件仍含 ${placeholderCount} 个模板占位符`, file);
+    }
+  }
+}
+
 const summary = {
+  schemaVersion: 1,
   workspace: root,
   scannedMarkdown: markdownFiles.length,
   errors: findings.filter(item => item.severity === 'error').length,
   warnings: findings.filter(item => item.severity === 'warning').length,
+  scan: {
+    mode: scanAll ? 'all' : 'governance',
+    maxFiles: maxMarkdownFiles,
+    truncated: scanLimitHit,
+    excludePatterns,
+    excludedPaths,
+  },
+  readiness: {
+    checked: ready,
+    profile: detectedProfile,
+    profileSource: readinessProfileSource,
+    unresolvedFiles: unresolvedReadinessFiles,
+  },
   findings,
 };
 
@@ -361,7 +602,9 @@ if (json) {
   process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
 } else {
   console.log(`工作区: ${root}`);
-  console.log(`扫描 Markdown: ${summary.scannedMarkdown}`);
+  console.log(`扫描 Markdown: ${summary.scannedMarkdown} (${summary.scan.mode})`);
+  if (excludePatterns.length > 0) console.log(`排除规则: ${excludePatterns.join(', ')}`);
+  if (ready) console.log(`就绪检查: profile=${detectedProfile || 'unknown'} (${readinessProfileSource || 'unknown'})`);
   for (const finding of findings) {
     const location = finding.file ? ` (${finding.file})` : '';
     console.log(`[${finding.severity.toUpperCase()}] ${finding.code}${location}: ${finding.message}`);

@@ -83,6 +83,21 @@ for (const field of ['display_name:', 'short_description:', 'default_prompt:', '
 if (!openai.includes('$competition-engineering')) {
   error('default_prompt must mention $competition-engineering', openaiPath);
 }
+const defaultPrompt = openai.match(/^\s*default_prompt:\s*["'](.*)["']\s*$/m);
+if (defaultPrompt && [...defaultPrompt[1]].length > 128) {
+  error('default_prompt must be at most 128 characters', openaiPath);
+}
+
+for (const readmeName of ['README.md', 'README.zh-CN.md']) {
+  const readmePath = path.join(root, readmeName);
+  const readme = readUtf8(readmePath);
+  if (/\.codex[\\/]skills/i.test(readme)) {
+    error('uses the legacy .codex/skills installation path', readmePath);
+  }
+  for (const marker of ['.agents\\skills', '--ready', '--profile', '--exclude', '--max-files']) {
+    if (!readme.includes(marker)) error('missing current usage marker ' + marker, readmePath);
+  }
+}
 
 const citationPath = path.join(root, 'CITATION.cff');
 const citation = readUtf8(citationPath);
@@ -96,6 +111,12 @@ for (const field of [
   'license: MIT',
 ]) {
   if (!citation.includes(field)) error('missing or unexpected ' + field, citationPath);
+}
+
+const workflowPath = path.join(root, '.github', 'workflows', 'validate.yml');
+const workflow = readUtf8(workflowPath);
+if (!workflow.includes('node: [22, 24]')) {
+  error('CI must cover supported Node.js versions 22 and 24', workflowPath);
 }
 
 const markdownFiles = [];

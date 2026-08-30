@@ -10,6 +10,15 @@
 node <skill-dir>/scripts/audit_workspace.cjs <项目目录>
 ```
 
+大型工作区需要全量扫描时，先排除复制仓库、第三方或生成树，避免它们淹没一方工程信号：
+
+```text
+node <skill-dir>/scripts/audit_workspace.cjs <项目目录> --all \
+  --exclude "**/vendor/**" --exclude "analysis_results/**/repo" --max-files 20000
+```
+
+`--exclude` 是相对项目根的 glob，可重复传入。形成可信入口并填写当前材料后，用 `--ready --strict` 做交接就绪检查；如果存量入口没有项目类型字段，可显式附加 `--profile competition` 或 `--profile research`，避免审计猜测。
+
 审计只报告问题，不移动或修改项目。结合人工检查确认：
 
 - 真正的 Git 根和源码根是否相同。
@@ -95,6 +104,7 @@ node <skill-dir>/scripts/audit_workspace.cjs <项目目录>
 - UTF-8、BOM、NUL 和换行没有被意外改写。
 - 用户改动、外部凭证和历史产物没有被误提交。
 - 原有复现命令和交付包仍可用。
+- `--ready --strict` 不再报告当前入口或 research 证据文件中的模板占位符。
 
 迁移笔记必须记录移动映射、哈希、未变清单和回滚方式。
 
